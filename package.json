@@ -1,16 +1,18 @@
 {
-  "name": "personal-os",
+  "name": "personal-tracker",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest run",
+    "check": "npm run lint && npm run test && npm run build"
   },
   "dependencies": {
-    "@nozbe/watermelondb": "^0.28.0",
-    "@nozbe/with-observables": "^1.6.0",
+    "dexie": "^4.4.5",
+    "lucide-react": "^1.39.0",
     "next": "16.3.3",
     "react": "19.2.8",
     "react-dom": "19.2.8"
@@ -22,7 +24,9 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.3",
+    "fake-indexeddb": "^6.2.5",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.11"
   }
 }

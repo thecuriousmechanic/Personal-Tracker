@@ -1,36 +1,54 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Personal-Tracker
 
-## Getting Started
+An Android-first personal workspace, with a companion Next.js web prototype in the same repository.
 
-First, run the development server:
+## Android
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Editable templates, nested sections, checklists, tables, boards and calendar views.
+- Drag handles for sections, checklist lines and board cards; multi-select, archive and delete for records.
+- Circular progress indicators, editable currency and downloadable Excel summaries.
+- Local Notion export import: **Home → New template → Import from Notion**.
+- Local Room storage, no account or runtime Notion credentials required.
+
+Export a Notion page using **Export → Markdown & CSV**, then select the ZIP (or a standalone `.md` / `.csv`) in the app. Preview the import, choose whether to include database records, and confirm. Every import creates a separate template without replacing existing pages.
+
+This is an offline conversion, not live Notion sync or full Notion compatibility. Markdown headings/checklists/text become editable sections; CSV columns and values become editable text fields. Images, layout, relations, buttons and formula logic are not recreated. See [import details](docs/NOTION_IMPORT.md).
+
+### Build
+
+Requirements: JDK 17, Android SDK platform 36, and an SDK path configured through `ANDROID_HOME` or ignored `android/local.properties`.
+
+```sh
+cd android
+./gradlew testDebugUnitTest lintDebug assembleDebug
+# Isolated test package on a connected Android device:
+./gradlew -PqaBuild=true connectedDebugAndroidTest
+# Optimized local APK:
+./gradlew assembleOptimized
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+APK: `android/app/build/outputs/apk/optimized/app-optimized.apk`.
+The optimized local build uses the developer's debug signing key. Configure your own release signing before distributing production builds. No signing keys are committed.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The displayed name is **Personal-Tracker**. The existing package ID `com.krishna.personalos` and database names are intentionally retained so upgrades preserve installed data. QA uses `com.krishna.personalos.qa`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Web app
 
-## Learn More
+The companion prototype is in `src/`, using Next.js, React and Dexie/IndexedDB. It includes planning, capture, knowledge, health and analytics screens. It does not yet have Android's native template-import/editor feature set, and there is no Android/web synchronization. The prototype initializes demonstration data in a new browser profile.
 
-To learn more about Next.js, take a look at the following resources:
+```sh
+npm ci
+npm run dev
+# Lint, tests and production build:
+npm run check
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Repository boundaries
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Source, tests, Room migration schemas, Gradle wrapper and dependency lockfiles are included. Build outputs, caches, screenshots, local SDK settings, credentials, private Notion exports and personal Obsidian notes are excluded. A clean Android checkout starts without private bundled templates; create a template or import your own export.
 
-## Deploy on Vercel
+Legacy private-template device tests skip when their optional local fixtures are absent. Public importer, persistence and editor tests run without those fixtures. Optional legacy fixtures can be supplied locally with `-PprivateAssetsDir=/absolute/path/to/assets`; never publish an APK containing someone else's private data.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Data safety
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Android data stays in the app's local storage. Imported file contents are not uploaded. Deleting app data or uninstalling removes local records; exporting worksheets is not a full restorable backup. Web data stays in that browser profile. Review exports before sharing them.

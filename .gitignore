@@ -39,3 +39,21 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Android
+/android/.gradle/
+/android/.kotlin/
+/android/.idea/
+/android/local.properties
+/android/**/build/
+/android/captures/
+*.apk
+*.aab
+*.jks
+*.keystore
+*.hprof
+*.log
+
+# User-owned imported Notion content; included only in local builds.
+/android/app/src/main/assets/private-notion/
+/android/app/src/main/assets/obsidian/

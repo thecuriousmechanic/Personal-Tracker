@@ -1,152 +1,166 @@
-import { BaseEntity } from '@/entities/models/base';
+export const CURRENT_USER_ID = "local-user";
+
+export type IsoDateTime = string;
+export type LocalDate = string;
+
+export interface BaseEntity {
+  id: string;
+  userId: string;
+  createdAt: IsoDateTime;
+  updatedAt: IsoDateTime;
+  deletedAt?: IsoDateTime;
+}
 
 export type EntityType =
-  | 'life_area'
-  | 'goal'
-  | 'project'
-  | 'milestone'
-  | 'task'
-  | 'habit'
-  | 'routine'
-  | 'note'
-  | 'resource'
-  | 'learning_item'
-  | 'metric'
-  | 'workout';
+  | "life_area"
+  | "goal"
+  | "project"
+  | "task"
+  | "habit"
+  | "note"
+  | "learning_item"
+  | "metric"
+  | "workout";
 
 export interface LifeArea extends BaseEntity {
   name: string;
-  description?: string;
-  icon?: string;
-  color?: string;
-  status: 'active' | 'archived';
+  icon: string;
+  color: string;
+  status: "active" | "archived";
 }
 
 export interface Goal extends BaseEntity {
   title: string;
   description?: string;
-  status: 'active' | 'paused' | 'completed' | 'cancelled';
-  targetValue?: number;
-  currentValue?: number;
-  unit?: string;
-  startDate?: Date;
-  targetDate?: Date;
+  status: "active" | "paused" | "completed" | "cancelled";
+  progress: number;
+  targetDate?: LocalDate;
+  lifeAreaId?: string;
 }
 
 export interface Project extends BaseEntity {
   title: string;
   description?: string;
-  status: 'planning' | 'active' | 'paused' | 'completed' | 'archived';
-  startDate?: Date;
-  targetDate?: Date;
-}
-
-export interface Milestone extends BaseEntity {
-  title: string;
-  description?: string;
-  status: 'pending' | 'in_progress' | 'completed';
-  targetDate?: Date;
+  status: "planning" | "active" | "paused" | "completed" | "archived";
+  progress: number;
+  targetDate?: LocalDate;
+  goalId?: string;
+  lifeAreaId?: string;
+  color: string;
 }
 
 export interface Task extends BaseEntity {
   title: string;
   description?: string;
-  status: 'inbox' | 'todo' | 'in_progress' | 'completed' | 'cancelled';
-  priority: 'none' | 'low' | 'medium' | 'high' | 'urgent';
-  dueDate?: Date;
-  completedAt?: Date;
+  status: "inbox" | "todo" | "in_progress" | "completed" | "cancelled";
+  priority: "none" | "low" | "medium" | "high" | "urgent";
+  dueDate?: LocalDate;
+  completedAt?: IsoDateTime;
   parentTaskId?: string;
-  position?: number;
+  projectId?: string;
+  position: number;
 }
 
 export interface Habit extends BaseEntity {
   title: string;
   description?: string;
-  frequencyType: 'daily' | 'weekly' | 'custom';
-  targetCount?: number;
+  frequencyType: "daily" | "weekly" | "custom";
+  targetCount: number;
   active: boolean;
-}
-
-export interface HabitLog extends BaseEntity {
-  habitId: string;
-  completedAt: Date;
-  value?: number;
-  notes?: string;
-}
-
-export interface Routine extends BaseEntity {
-  title: string;
-  description?: string;
-  active: boolean;
-}
-
-export interface RoutineStep extends BaseEntity {
-  routineId: string;
-  title: string;
-  order: number;
-  completed: boolean;
+  streak: number;
+  completedDates: LocalDate[];
+  color: string;
 }
 
 export interface Note extends BaseEntity {
   title: string;
-  content?: string;
-  format: 'markdown' | 'blocks';
-  status: 'active' | 'archived';
-}
-
-export interface Resource extends BaseEntity {
-  title: string;
-  type: 'book' | 'article' | 'video' | 'course' | 'paper' | 'website' | 'document' | 'other';
-  url?: string;
-  author?: string;
-  metadata?: Record<string, unknown>;
+  content: string;
+  format: "markdown";
+  status: "active" | "archived";
+  tags: string[];
+  linkedEntityCount: number;
 }
 
 export interface LearningItem extends BaseEntity {
   parentId?: string;
   title: string;
   description?: string;
-  type: 'domain' | 'subject' | 'topic' | 'concept';
-  status: 'not_started' | 'learning' | 'reviewing' | 'mastered';
-  mastery?: number;
-  position?: number;
+  type: "domain" | "subject" | "topic" | "concept";
+  status: "not_started" | "learning" | "reviewing" | "mastered";
+  mastery: number;
+  position: number;
 }
 
 export interface Metric extends BaseEntity {
   name: string;
   unit: string;
-  valueType: 'number' | 'duration' | 'boolean' | 'text';
-  category?: string;
-}
-
-export interface MetricEntry extends BaseEntity {
-  metricId: string;
-  value: number;
-  recordedAt: Date;
-  notes?: string;
+  valueType: "number" | "duration" | "boolean" | "text";
+  category: string;
+  currentValue: number;
+  previousValue?: number;
+  color: string;
 }
 
 export interface Workout extends BaseEntity {
   title: string;
-  startedAt?: Date;
-  completedAt?: Date;
-  notes?: string;
+  startedAt: IsoDateTime;
+  completedAt?: IsoDateTime;
+  durationMinutes: number;
+  volumeKg: number;
 }
 
-export interface Exercise extends BaseEntity {
-  name: string;
-  muscleGroup?: string;
-  instructions?: string;
-  imageUrl?: string;
-  metadata?: Record<string, unknown>;
+export type RelationshipType =
+  | "belongs_to"
+  | "contributes_to"
+  | "supports"
+  | "requires"
+  | "related_to"
+  | "depends_on"
+  | "references"
+  | "blocks"
+  | "tracks"
+  | "part_of";
+
+export interface EntityRelation {
+  id: string;
+  userId: string;
+  sourceEntityType: EntityType;
+  sourceEntityId: string;
+  targetEntityType: EntityType;
+  targetEntityId: string;
+  relationshipType: RelationshipType;
+  createdAt: IsoDateTime;
 }
 
-export interface WorkoutSet extends BaseEntity {
-  workoutId: string;
-  exerciseId: string;
-  setNumber: number;
-  weight?: number;
-  reps?: number;
-  duration?: number;
-  completed: boolean;
+export interface ActivityEvent {
+  id: string;
+  userId: string;
+  entityType: EntityType;
+  entityId: string;
+  action: "created" | "completed" | "reopened" | "scheduled";
+  label: string;
+  occurredAt: IsoDateTime;
+}
+
+export interface AppSnapshot {
+  lifeAreas: LifeArea[];
+  goals: Goal[];
+  projects: Project[];
+  tasks: Task[];
+  habits: Habit[];
+  notes: Note[];
+  learningItems: LearningItem[];
+  metrics: Metric[];
+  workouts: Workout[];
+  relations: EntityRelation[];
+  activities: ActivityEvent[];
+}
+
+export type CaptureType = "task" | "note" | "project" | "goal" | "habit";
+
+export interface CaptureInput {
+  type: CaptureType;
+  title: string;
+  destination?: "inbox" | "today" | "tomorrow";
+  priority?: Task["priority"];
 }
