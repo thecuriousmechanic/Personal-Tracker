@@ -9,10 +9,11 @@ interface TaskRowProps {
   today: string;
   project?: Project;
   onToggle: (id: string) => void;
+  onEdit?: (task: Task) => void;
   compact?: boolean;
 }
 
-export function TaskRow({ task, today, project, onToggle, compact = false }: TaskRowProps) {
+export function TaskRow({ task, today, project, onToggle, onEdit, compact = false }: TaskRowProps) {
   const completed = task.status === "completed";
   return (
     <div className={`task-row ${completed ? "task-row--completed" : ""} ${compact ? "task-row--compact" : ""}`}>
@@ -26,7 +27,11 @@ export function TaskRow({ task, today, project, onToggle, compact = false }: Tas
       >
         {completed && <Check size={14} strokeWidth={3} />}
       </button>
-      <div className="task-row__body">
+      <div
+        className="task-row__body"
+        onClick={() => onEdit?.(task)}
+        style={{ cursor: onEdit ? "pointer" : "default" }}
+      >
         <div className="task-row__title-line">
           {task.parentTaskId && <CornerDownRight size={13} aria-hidden="true" />}
           <span className="task-row__title">{task.title}</span>

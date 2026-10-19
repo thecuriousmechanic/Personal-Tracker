@@ -1,16 +1,21 @@
 "use client";
 
-import { ArrowRight, CalendarDays, Check, Flame, Plus, Sparkles, Target } from "lucide-react";
+import { ArrowRight, CalendarDays, Check, Flame, Plus, Settings2, Sparkles, Target } from "lucide-react";
 import Link from "next/link";
-import { useMemo, type CSSProperties } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { usePersonalOS } from "@/app/providers/AppProvider";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { ProgressRing } from "@/components/ui/ProgressRing";
 import { TaskRow } from "@/components/ui/TaskRow";
+import { TaskDetailModal } from "@/components/modals/TaskDetailModal";
+import { HabitDetailModal } from "@/components/modals/HabitDetailModal";
+import type { Habit, Task } from "@/types/entities";
 import { getTodayOverview } from "@/services/dashboard.service";
 
 export function TodayDashboard() {
   const { snapshot, isReady, openCapture, toggleTask, toggleHabit } = usePersonalOS();
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
   const now = useMemo(() => new Date(), []);
   const overview = useMemo(() => getTodayOverview(snapshot, now), [snapshot, now]);
 
@@ -68,10 +73,10 @@ export function TodayDashboard() {
           </div>
           <div className="task-list">
             {overview.openTasks.map((task) => (
-              <TaskRow key={task.id} task={task} today={overview.dateKey} project={projectFor(task.projectId)} onToggle={toggleTask} />
+              <TaskRow key={task.id} task={task} today={overview.dateKey} project={projectFor(task.projectId)} onToggle={toggleTask} onEdit={(t) => setSelectedTask(t)} />
             ))}
             {overview.completedTasks.map((task) => (
-              <TaskRow key={task.id} task={task} today={overview.dateKey} project={projectFor(task.projectId)} onToggle={toggleTask} compact />
+              <TaskRow key={task.id} task={task} today={overview.dateKey} project={projectFor(task.projectId)} onToggle={toggleTask} onEdit={(t) => setSelectedTask(t)} compact />
             ))}
             {overview.openTasks.length + overview.completedTasks.length === 0 && (
               <div className="empty-state"><Check size={22} /><strong>Nothing scheduled</strong><span>Capture a task when you’re ready.</span></div>
@@ -85,7 +90,17 @@ export function TodayDashboard() {
               <span className="eyebrow">Daily rhythm</span>
               <h2>Habits</h2>
             </div>
-            <span className="streak-badge"><Flame size={14} /> 8 day best</span>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <button
+                type="button"
+                className="text-button"
+                onClick={() => openCapture("habit")}
+                style={{ fontSize: "0.8rem", display: "inline-flex", alignItems: "center", gap: "4px" }}
+              >
+                <Plus size={13} /> New habit
+              </button>
+              <span className="streak-badge"><Flame size={14} /> 8 day best</span>
+            </div>
           </div>
           <div className="habit-list">
             {overview.habits.map((habit) => {
@@ -100,6 +115,32 @@ export function TodayDashboard() {
                 >
                   <span className="habit-row__color" style={{ background: habit.color }} />
                   <span className="habit-row__copy"><strong>{habit.title}</strong><small>{habit.streak} day streak</small></span>
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    title="Edit habit details"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedHabit(habit);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.stopPropagation();
+                        setSelectedHabit(habit);
+                      }
+                    }}
+                    style={{
+                      padding: "4px",
+                      borderRadius: "4px",
+                      color: "#64748b",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginRight: "4px",
+                    }}
+                  >
+                    <Settings2 size={13} />
+                  </span>
                   <span className="habit-row__check">{completed && <Check size={14} strokeWidth={3} />}</span>
                 </button>
               );
@@ -127,6 +168,18 @@ export function TodayDashboard() {
           })}
         </div>
       </section>
+
+      <TaskDetailModal
+        task={selectedTask}
+        isOpen={Boolean(selectedTask)}
+        onClose={() => setSelectedTask(null)}
+      />
+
+      <HabitDetailModal
+        habit={selectedHabit}
+        isOpen={Boolean(selectedHabit)}
+        onClose={() => setSelectedHabit(null)}
+      />
     </div>
   );
 }

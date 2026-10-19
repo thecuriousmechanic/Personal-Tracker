@@ -1,11 +1,14 @@
 import type {
   ActivityEvent,
   AppSnapshot,
+  EntityRelation,
   Goal,
   Habit,
+  LearningItem,
   Note,
   Project,
   Task,
+  Workout,
 } from "@/types/entities";
 import { PersonalOSDatabase } from "@/database/personal-os.database";
 import { createSeedSnapshot } from "@/database/seed";
@@ -113,8 +116,78 @@ export class DexieAppRepository implements AppRepository {
     });
   }
 
+  async deleteTask(id: string, activity?: ActivityEvent): Promise<void> {
+    await this.database.transaction("rw", this.database.tasks, this.database.activities, async () => {
+      await this.database.tasks.delete(id);
+      if (activity) await this.database.activities.add(activity);
+    });
+  }
+
+  async deleteHabit(id: string): Promise<void> {
+    await this.database.habits.delete(id);
+  }
+
+  async saveNote(note: Note): Promise<void> {
+    await this.database.notes.put(note);
+  }
+
+  async deleteNote(id: string): Promise<void> {
+    await this.database.notes.delete(id);
+  }
+
+  async saveLearningItem(item: LearningItem): Promise<void> {
+    await this.database.learningItems.put(item);
+  }
+
+  async addLearningItem(item: LearningItem): Promise<void> {
+    await this.database.learningItems.add(item);
+  }
+
+  async deleteLearningItem(id: string): Promise<void> {
+    await this.database.learningItems.delete(id);
+  }
+
+  async saveProject(project: Project): Promise<void> {
+    await this.database.projects.put(project);
+  }
+
+  async deleteProject(id: string): Promise<void> {
+    await this.database.projects.delete(id);
+  }
+
+  async saveGoal(goal: Goal): Promise<void> {
+    await this.database.goals.put(goal);
+  }
+
+  async deleteGoal(id: string): Promise<void> {
+    await this.database.goals.delete(id);
+  }
+
+  async addWorkout(workout: Workout, activity: ActivityEvent): Promise<void> {
+    await this.database.transaction("rw", this.database.workouts, this.database.activities, async () => {
+      await this.database.workouts.add(workout);
+      await this.database.activities.add(activity);
+    });
+  }
+
+  async deleteWorkout(id: string): Promise<void> {
+    await this.database.workouts.delete(id);
+  }
+
+  async addRelation(relation: EntityRelation): Promise<void> {
+    await this.database.relations.add(relation);
+  }
+
+  async deleteRelation(id: string): Promise<void> {
+    await this.database.relations.delete(id);
+  }
+
   async addActivity(activity: ActivityEvent): Promise<void> {
     await this.database.activities.add(activity);
+  }
+
+  async importSnapshot(snapshot: AppSnapshot): Promise<void> {
+    await this.writeSeed(snapshot);
   }
 
   async reset(): Promise<AppSnapshot> {

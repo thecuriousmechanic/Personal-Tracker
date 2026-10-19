@@ -5,6 +5,10 @@ import { useMemo, useState } from "react";
 import { usePersonalOS } from "@/app/providers/AppProvider";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { TaskRow } from "@/components/ui/TaskRow";
+import { TaskDetailModal } from "@/components/modals/TaskDetailModal";
+import { ProjectDetailModal } from "@/components/modals/ProjectDetailModal";
+import { GoalDetailModal } from "@/components/modals/GoalDetailModal";
+import type { Goal, Project, Task } from "@/types/entities";
 import { toLocalDate } from "@/utils/date";
 
 type View = "inbox" | "today" | "upcoming" | "all";
@@ -12,6 +16,10 @@ type View = "inbox" | "today" | "upcoming" | "all";
 export function PlanBoard() {
   const { snapshot, isReady, openCapture, toggleTask, scheduleTaskForToday } = usePersonalOS();
   const [view, setView] = useState<View>("inbox");
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
+
   const today = useMemo(() => toLocalDate(new Date()), []);
   const tasks = useMemo(() => snapshot.tasks.filter((task) => {
     if (task.deletedAt || task.status === "cancelled") return false;
@@ -46,12 +54,18 @@ export function PlanBoard() {
       <section className="panel plan-list-panel">
         <div className="section-heading">
           <div><span className="eyebrow">{view === "inbox" ? "Unsorted" : "Schedule"}</span><h2>{view[0].toUpperCase() + view.slice(1)}</h2></div>
-          <span className="muted-label">{tasks.length} {tasks.length === 1 ? "item" : "items"}</span>
+          <span className="muted-label">{tasks.length} {tasks.length === 1 ? "item" : "items"} (click to edit)</span>
         </div>
         <div className="task-list">
           {tasks.map((task) => (
             <div className="plan-task" key={task.id}>
-              <TaskRow task={task} today={today} project={projectFor(task.projectId)} onToggle={toggleTask} />
+              <TaskRow
+                task={task}
+                today={today}
+                project={projectFor(task.projectId)}
+                onToggle={toggleTask}
+                onEdit={(t) => setSelectedTask(t)}
+              />
               {view === "inbox" && (
                 <button type="button" className="text-button" onClick={() => scheduleTaskForToday(task.id)}>Move to today <ArrowRight size={13} /></button>
               )}
@@ -66,7 +80,15 @@ export function PlanBoard() {
           <div className="section-heading"><div><span className="eyebrow">Outcomes</span><h2>Projects</h2></div><button type="button" className="text-button" onClick={() => openCapture("project")}>New project <Plus size={14} /></button></div>
           <div className="stack-list">
             {snapshot.projects.map((project) => (
-              <article className="compact-card" key={project.id}>
+              <article
+                className="compact-card"
+                key={project.id}
+                onClick={() => setSelectedProject(project)}
+                role="button"
+                tabIndex={0}
+                style={{ cursor: "pointer", transition: "transform 0.15s ease" }}
+                onKeyDown={(e) => { if (e.key === "Enter") setSelectedProject(project); }}
+              >
                 <span className="compact-card__indicator" style={{ background: project.color }} />
                 <div><h3>{project.title}</h3><p>{project.description || "Define the next useful outcome."}</p><div className="progress-line"><span style={{ width: `${project.progress}%`, background: project.color }} /></div></div>
                 <strong>{project.progress}%</strong>
@@ -78,11 +100,41 @@ export function PlanBoard() {
           <div className="section-heading"><div><span className="eyebrow">Direction</span><h2>Goals</h2></div><button type="button" className="text-button" onClick={() => openCapture("goal")}>New goal <Plus size={14} /></button></div>
           <div className="stack-list">
             {snapshot.goals.map((goal) => (
-              <article className="goal-card" key={goal.id}><span><Target size={17} /></span><div><h3>{goal.title}</h3><p>{goal.progress}% progress</p></div><ArrowRight size={15} /></article>
+              <article
+                className="goal-card"
+                key={goal.id}
+                onClick={() => setSelectedGoal(goal)}
+                role="button"
+                tabIndex={0}
+                style={{ cursor: "pointer", transition: "transform 0.15s ease" }}
+                onKeyDown={(e) => { if (e.key === "Enter") setSelectedGoal(goal); }}
+              >
+                <span><Target size={17} /></span>
+                <div><h3>{goal.title}</h3><p>{goal.progress}% progress</p></div>
+                <ArrowRight size={15} />
+              </article>
             ))}
           </div>
         </section>
       </div>
+
+      <TaskDetailModal
+        task={selectedTask}
+        isOpen={Boolean(selectedTask)}
+        onClose={() => setSelectedTask(null)}
+      />
+
+      <ProjectDetailModal
+        project={selectedProject}
+        isOpen={Boolean(selectedProject)}
+        onClose={() => setSelectedProject(null)}
+      />
+
+      <GoalDetailModal
+        goal={selectedGoal}
+        isOpen={Boolean(selectedGoal)}
+        onClose={() => setSelectedGoal(null)}
+      />
     </div>
   );
 }
