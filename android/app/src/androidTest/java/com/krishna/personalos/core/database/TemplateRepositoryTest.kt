@@ -10,6 +10,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.*
 import org.junit.Assert.*
 import java.time.YearMonth
+import org.json.JSONArray
 
 class TemplateRepositoryTest {
     private val context: Context = ApplicationProvider.getApplicationContext()
@@ -25,11 +26,22 @@ class TemplateRepositoryTest {
         Assume.assumeTrue("Private import is intentionally excluded from source control", "templates.json" in context.assets.list("private-notion").orEmpty())
         repository.importBundled(context)
         val pages = repository.pages.first()
-        assertEquals(5, pages.size)
+        val sourceIds = context.assets.open("private-notion/templates.json").bufferedReader().use { reader ->
+            val source = JSONArray(reader.readText())
+            (0 until source.length()).map { source.getJSONObject(it).getString("id") }.toSet()
+        }
+        val obsidianFiles = context.assets.list("obsidian").orEmpty()
+        val expectedIds = sourceIds + listOfNotNull(
+            "obsidian-syllabus".takeIf { "syllabus.md" in obsidianFiles },
+            "obsidian-24-week-plan".takeIf { "24-week-plan.md" in obsidianFiles },
+        )
+        assertEquals(expectedIds, pages.map { it.id }.toSet())
         assertEquals(0, pages.sumOf { TemplateDocument.parse(it.data).tables.sumOf { t -> t.rows.size } })
-        assertEquals(24, TemplateDocument.parse(pages.first { it.id == "obsidian-24-week-plan" }.data).blocks.count { it.kind == "GROUP" })
-        assertEquals(724, TemplateDocument.parse(pages.first { it.id == "obsidian-24-week-plan" }.data).blocks.sumOf { it.children.size })
-        assertEquals(55, TemplateDocument.parse(pages.first { it.id == "obsidian-syllabus" }.data).blocks.sumOf { it.children.size })
+        pages.find { it.id == "obsidian-24-week-plan" }?.let {
+            assertEquals(24, TemplateDocument.parse(it.data).blocks.count { block -> block.kind == "GROUP" })
+            assertEquals(724, TemplateDocument.parse(it.data).blocks.sumOf { block -> block.children.size })
+        }
+        pages.find { it.id == "obsidian-syllabus" }?.let { assertEquals(55, TemplateDocument.parse(it.data).blocks.sumOf { block -> block.children.size }) }
         val page = pages.first()
         repository.rename(page.id, "My edited template", page.subtitle)
         repository.change(page.id) { it.copy(blocks = it.blocks + PageBlock("local", "CHECK", "Local edit", checked = true)) }
@@ -37,7 +49,7 @@ class TemplateRepositoryTest {
         val databaseId = TemplateDocument.parse(databasePage.data).tables.first().id
         repository.change(databasePage.id) { it.changeTable(databaseId) { table -> table.copy(rows = table.rows + PageRow("my-record", "My record", emptyMap())) } }
         repository.importBundled(context)
-        assertEquals(5, repository.pages.first().size)
+        assertEquals(expectedIds, repository.pages.first().map { it.id }.toSet())
         assertEquals("My edited template", database.templatePageDao().page(page.id)!!.title)
         assertTrue(TemplateDocument.parse(database.templatePageDao().page(page.id)!!.data).blocks.last().checked)
         assertEquals(listOf("my-record"), TemplateDocument.parse(database.templatePageDao().page(databasePage.id)!!.data).table(databaseId).rows.map { it.id })

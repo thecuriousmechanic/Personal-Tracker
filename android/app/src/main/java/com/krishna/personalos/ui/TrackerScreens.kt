@@ -74,13 +74,14 @@ internal fun TrackerScreen(workspace: TrackerWorkspace, actions: TrackerActions,
         else if (onHome != null) onHome() else { selectedId = null; archived = false }
     }
     val fields = tracker?.let { workspace.fieldsFor(it.id) }.orEmpty()
-    if (deleting && tracker != null) ConfirmDelete("template", "This removes “${tracker.title}” and its entries permanently.", busy, { deleting = false }, { run { actions.delete(tracker.id); deleting = false; selectedId = null; onHome?.invoke() } })
+    if (deleting && tracker != null) ConfirmDelete("page", "Move “${tracker.title}” and its entries to Trash?", busy, { deleting = false }, { run { actions.delete(tracker.id); deleting = false; selectedId = null; onHome?.invoke() } }, recoverable = true)
     if (deletingEntries && tracker != null) ConfirmDelete(
         "${selectedEntries.size} ${if (selectedEntries.size == 1) "entry" else "entries"}",
-        "This permanently removes the selected entries and all their saved values.",
+        "Move the selected entries and their saved values to Trash?",
         busy,
         { deletingEntries = false },
         { val ids = selectedEntries; run { actions.deleteEntries(ids); selectedEntries = emptySet(); deletingEntries = false } },
+        recoverable = true,
     )
 
     Column(Modifier.fillMaxSize().padding(insets).padding(horizontal = 20.dp)) {
@@ -399,5 +400,5 @@ private fun EntryDialog(entry: TrackerEntryEntity, fields: List<TrackerFieldEnti
         onDelete?.let { TextButton(onClick = { deleting = true }, enabled = !busy, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("Delete entry") } }
     }
     if (discard) AlertDialog(onDismissRequest = { discard = false }, title = { Text("Discard changes?") }, text = { Text("Your unsaved entry changes will be lost.") }, confirmButton = { TextButton(onClick = onDismiss) { Text("Discard") } }, dismissButton = { TextButton(onClick = { discard = false }) { Text("Keep editing") } })
-    if (deleting) ConfirmDelete("entry", "This permanently removes “${entry.title}” and its saved values.", busy, { deleting = false }, { deleting = false; onDelete?.invoke() })
+    if (deleting) ConfirmDelete("entry", "Move “${entry.title}” and its saved values to Trash?", busy, { deleting = false }, { deleting = false; onDelete?.invoke() }, recoverable = true)
 }

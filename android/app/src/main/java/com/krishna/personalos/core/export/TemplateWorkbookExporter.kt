@@ -12,8 +12,8 @@ import java.util.zip.ZipOutputStream
 object TemplateWorkbookExporter {
     private const val CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
-    fun write(title: String, document: TemplateDocument, currencySymbol: String, output: OutputStream) {
-        val sheets = buildSheets(document, currencySymbol)
+    fun write(title: String, document: TemplateDocument, currencySymbol: String, output: OutputStream, includeArchived: Boolean = false) {
+        val sheets = buildSheets(document, currencySymbol, includeArchived)
         ZipOutputStream(output.buffered()).use { zip ->
             zip.text("[Content_Types].xml", contentTypes(sheets.size))
             zip.text("_rels/.rels", rootRelationships())
@@ -26,9 +26,9 @@ object TemplateWorkbookExporter {
         }
     }
 
-    private fun buildSheets(document: TemplateDocument, currencySymbol: String): List<Sheet> {
+    private fun buildSheets(document: TemplateDocument, currencySymbol: String, includeArchived: Boolean): List<Sheet> {
         data class PeriodKey(val period: YearMonth, val table: String)
-        val dated = document.tables.flatMap { table -> table.rows.mapNotNull { row -> row.month()?.let { Triple(it, table, row) } } }
+        val dated = document.tables.flatMap { table -> table.rows.filter { includeArchived || !it.archived }.mapNotNull { row -> row.month()?.let { Triple(it, table, row) } } }
         val monthly = dated.groupBy { PeriodKey(it.first, it.second.title.ifBlank { it.second.id }) }.toSortedMap(compareBy<PeriodKey> { it.period }.thenBy { it.table })
         val yearly = dated.groupBy { it.first.year to it.second.title.ifBlank { it.second.id } }.toSortedMap(compareBy<Pair<Int, String>> { it.first }.thenBy { it.second })
         val summaryHeader = "Amount ($currencySymbol)"

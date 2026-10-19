@@ -1,6 +1,7 @@
 package com.krishna.personalos.core.database
 
 import androidx.room.Entity
+import androidx.room.ColumnInfo
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
@@ -28,6 +29,9 @@ data class TaskEntity(
     val createdAt: Long,
     val completedAt: Long? = null,
     val deletedAt: Long? = null,
+    @ColumnInfo(defaultValue = "0") val repeatDays: Int = 0,
+    @ColumnInfo(defaultValue = "0") val repeatPaused: Boolean = false,
+    val reminderMinutes: Int? = null,
 )
 
 @Entity(tableName = "habits")

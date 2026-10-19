@@ -64,9 +64,10 @@ private fun pageIcon(kind: String) = when (kind) { "week" -> "🌿"; "finance" -
 private fun pageCategory(kind: String) = when (kind) { "week" -> "Routine & wellbeing"; "finance" -> "Money & planning"; "study" -> "Learning workspace"; else -> "Personal growth" }
 private fun pageWash(kind: String) = when (kind) { "week" -> PeachWash; "finance" -> SageWash; "study" -> SageWash; else -> LilacWash }
 private val coverCache = android.util.LruCache<String, androidx.compose.ui.graphics.ImageBitmap>(6)
+internal fun clearPageCoverCache() { coverCache.evictAll() }
 
 @Composable
-private fun PageCover(file: String, modifier: Modifier) {
+internal fun PageCover(file: String, modifier: Modifier) {
     if (file.isBlank()) {
         Box(modifier.background(MaterialTheme.colorScheme.surfaceContainer))
         return
@@ -75,84 +76,14 @@ private fun PageCover(file: String, modifier: Modifier) {
     val cover by produceState(coverCache.get(file), file) {
         value = coverCache.get(file) ?: withContext(Dispatchers.IO) { runCatching {
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            context.assets.open("private-notion/$file").use { BitmapFactory.decodeStream(it, null, bounds) }
+            val embedded = com.krishna.personalos.core.database.AppDatabase.get(context).recoveryDao().preference("cover:$file")?.value?.let { android.util.Base64.decode(it, android.util.Base64.NO_WRAP) }
+            fun input() = embedded?.inputStream() ?: context.assets.open("private-notion/$file")
+            input().use { BitmapFactory.decodeStream(it, null, bounds) }
             val options = BitmapFactory.Options().apply { inSampleSize = 1; while (bounds.outWidth / inSampleSize > 1200) inSampleSize *= 2 }
-            context.assets.open("private-notion/$file").use { BitmapFactory.decodeStream(it, null, options)?.asImageBitmap() }?.also { coverCache.put(file, it) }
+            input().use { BitmapFactory.decodeStream(it, null, options)?.asImageBitmap() }?.also { coverCache.put(file, it) }
         }.getOrNull() }
     }
     Box(modifier.background(SurfaceNavy)) { cover?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) } }
-}
-
-@Composable
-internal fun TemplateHomeScreen(pages: List<TemplatePageEntity>, trackers: TrackerWorkspace, error: String?, insets: PaddingValues, onPage: (String) -> Unit, onCustom: (String) -> Unit, onCreate: () -> Unit, onEdit: (String, Boolean) -> Unit, onDelete: (String, String, Boolean) -> Unit) {
-    var query by rememberSaveable { mutableStateOf("") }
-    var archived by rememberSaveable { mutableStateOf(false) }
-    val matchingPages by produceState(pages, pages, query, archived) {
-        value = withContext(Dispatchers.Default) {
-            val search = query.trim()
-            pages.filter { it.archived == archived && (search.isBlank() || it.title.contains(search, true) || it.subtitle.contains(search, true) || TemplateDocumentCache.getOrParse(it.id, it.data).matchesQuery(search)) }
-        }
-    }
-    val matchingTrackers = remember(trackers, query, archived) {
-        val search = query.trim()
-        trackers.trackers.filter { tracker -> tracker.archived == archived && (search.isBlank() || tracker.title.contains(search, true) || tracker.description.contains(search, true) || trackers.entries.filter { it.trackerId == tracker.id }.any { entry -> entry.title.contains(search, true) || entry.body.contains(search, true) || trackers.valuesFor(entry.id).values.any { it.contains(search, true) } }) }
-    }
-    LazyColumn(Modifier.fillMaxSize().padding(insets).testTag("template-home"), contentPadding = PaddingValues(bottom = 24.dp)) {
-        item {
-            Box(Modifier.fillMaxWidth().background(SageWash)) {
-                Canvas(Modifier.align(Alignment.TopEnd).size(156.dp)) {
-                    drawCircle(Amber.copy(alpha = .12f), radius = 43.dp.toPx(), center = androidx.compose.ui.geometry.Offset(size.width - 25.dp.toPx(), 56.dp.toPx()))
-                    drawArc(Cyan.copy(alpha = .14f), 40f, 240f, false, topLeft = androidx.compose.ui.geometry.Offset(10.dp.toPx(), 48.dp.toPx()), size = androidx.compose.ui.geometry.Size(140.dp.toPx(), 140.dp.toPx()), style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))
-                    drawArc(Cyan.copy(alpha = .14f), 40f, 240f, false, topLeft = androidx.compose.ui.geometry.Offset(20.dp.toPx(), 38.dp.toPx()), size = androidx.compose.ui.geometry.Size(140.dp.toPx(), 140.dp.toPx()), style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))
-                }
-                Column(Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Rounded.AutoAwesome, null, tint = Cyan, modifier = Modifier.size(18.dp))
-                        Text("  PERSONAL SPACE", color = Cyan, style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f))
-                        TextButton(onClick = { archived = !archived }) { Text(if (archived) "Back" else "Archive") }
-                    }
-                    Spacer(Modifier.height(18.dp))
-                    Text(if (archived) "Archived templates" else "Your templates", color = Ice, fontFamily = FontFamily.Serif, fontSize = 37.sp, lineHeight = 42.sp, letterSpacing = (-1).sp)
-                    Spacer(Modifier.height(8.dp))
-                    Text("A little structure. More room to grow.", color = Muted, style = MaterialTheme.typography.bodyMedium)
-                    Spacer(Modifier.height(20.dp))
-                    Text(LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, d MMMM")), color = Cyan, style = MaterialTheme.typography.labelSmall)
-                }
-            }
-            Column(Modifier.padding(horizontal = 24.dp, vertical = 18.dp)) {
-                TextField(query, { query = it }, placeholder = { Text("Search templates and contents") }, leadingIcon = { Icon(Icons.Rounded.Search, null, Modifier.size(20.dp)) }, singleLine = true, modifier = Modifier.fillMaxWidth(), colors = TextFieldDefaults.colors(unfocusedContainerColor = Color.Transparent, focusedContainerColor = Color.Transparent, unfocusedIndicatorColor = Divider))
-                if (!archived) FilledTonalButton(onClick = onCreate, modifier = Modifier.fillMaxWidth().padding(top = 12.dp).testTag("new-template")) { Icon(Icons.Rounded.Add, null, Modifier.size(18.dp)); Text(" New template") }
-                Spacer(Modifier.height(20.dp))
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(if (archived) "ARCHIVE" else "MY PAGES", color = Muted, style = MaterialTheme.typography.labelSmall, modifier = Modifier.weight(1f))
-                    Text("${matchingPages.size + matchingTrackers.size} templates", color = Muted, style = MaterialTheme.typography.labelSmall)
-                }
-                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            }
-        }
-        items(matchingPages, key = { it.id }) { page ->
-            Row(Modifier.fillMaxWidth().clickable { onPage(page.id) }.padding(horizontal = 24.dp, vertical = 17.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.width(70.dp).height(88.dp)) {
-                    PageCover(page.cover, Modifier.fillMaxSize().clip(RoundedCornerShape(5.dp)))
-                    Box(Modifier.align(Alignment.BottomStart).offset(x = (-5).dp, y = 5.dp).size(30.dp).background(pageWash(page.kind), RoundedCornerShape(5.dp)), contentAlignment = Alignment.Center) { Text(pageIcon(page.kind), fontSize = 19.sp, color = accent(page.kind)) }
-                }
-                Spacer(Modifier.width(19.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(pageCategory(page.kind), color = accent(page.kind), style = MaterialTheme.typography.labelSmall)
-                    Spacer(Modifier.height(5.dp))
-                    Text(page.title, color = Ice, style = MaterialTheme.typography.titleMedium)
-                    Spacer(Modifier.height(6.dp))
-                    Text(page.subtitle, color = Muted, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                }
-                TemplateRowMenu(page.title, { onEdit(page.id, false) }, { onDelete(page.id, page.title, false) })
-            }
-            HorizontalDivider(color = Divider, modifier = Modifier.padding(horizontal = 24.dp))
-        }
-        items(matchingTrackers, key = { "custom-${it.id}" }) { item -> Row(Modifier.padding(horizontal = 24.dp), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { WorkspaceLine(item.title, "${trackers.entriesFor(item.id).size} entries · Personal template") { onCustom(item.id) } }; TemplateRowMenu(item.title, { onEdit(item.id, true) }, { onDelete(item.id, item.title, true) }) } }
-        if (matchingPages.isEmpty() && matchingTrackers.isEmpty()) item {
-            Text(if (query.isNotBlank()) "No matches. Try a template name, checklist item, or record value." else if (archived) "Nothing archived." else "Create your first template to start organizing your space.", color = Muted, modifier = Modifier.padding(24.dp))
-        }
-    }
 }
 
 @Composable
@@ -181,6 +112,8 @@ internal fun TemplatePageScreen(page: TemplatePageEntity, actions: TemplateActio
     var deleteBlock by remember { mutableStateOf<PageBlock?>(null) }
     var rename by rememberSaveable { mutableStateOf(false) }
     var currencyEditor by rememberSaveable { mutableStateOf(false) }
+    var exportOptions by rememberSaveable { mutableStateOf(false) }
+    var includeArchived by rememberSaveable { mutableStateOf(false) }
     val drag = remember(page.id) { WorkspaceDragState() }
     val pageScroll = rememberLazyListState()
     var pageBounds by remember { mutableStateOf(Rect.Zero) }
@@ -194,7 +127,7 @@ internal fun TemplatePageScreen(page: TemplatePageEntity, actions: TemplateActio
             try {
                 withContext(Dispatchers.IO) {
                     val output = requireNotNull(context.contentResolver.openOutputStream(uri, "w")) { "Could not open the selected file" }
-                    output.use { TemplateWorkbookExporter.write(page.title, snapshot, currencySymbol, it) }
+                    output.use { TemplateWorkbookExporter.write(page.title, snapshot, currencySymbol, it, includeArchived) }
                 }
                 Toast.makeText(context, "Excel workbook saved", Toast.LENGTH_SHORT).show()
             } catch (e: CancellationException) { throw e }
@@ -240,20 +173,21 @@ internal fun TemplatePageScreen(page: TemplatePageEntity, actions: TemplateActio
                 DropdownMenu(menu, { menu = false }) {
                     DropdownMenuItem(text = { Text("Rename template") }, onClick = { menu = false; rename = true })
                     DropdownMenuItem(text = { Text("Duplicate template") }, onClick = { menu = false; run { onCopy(actions.duplicate(page.id)) } })
-                    DropdownMenuItem(text = { Text("Export Excel workbook") }, onClick = { menu = false; exportLauncher.launch(exportFileName(page.title)) })
+                    DropdownMenuItem(text = { Text("Export Excel workbook") }, onClick = { menu = false; exportOptions = true })
                     DropdownMenuItem(text = { Text("Currency symbol") }, onClick = { menu = false; currencyEditor = true })
-                    DropdownMenuItem(text = { Text("Delete template") }, onClick = { menu = false; deleting = true })
+                    DropdownMenuItem(text = { Text("Move to Trash") }, onClick = { menu = false; deleting = true })
                 }
             }
         }
         HorizontalDivider(color = Divider.copy(alpha = .6f))
+        Text(if (pending > 0 || busy) "Saving…" else if (error != null) "Changes could not be saved" else "Saved on this device", color = if (error != null) MaterialTheme.colorScheme.error else Muted, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp))
         if (busy) LinearProgressIndicator(Modifier.fillMaxWidth(), color = accent(page.kind))
         error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp)) }
         LazyColumn(Modifier.weight(1f).onGloballyPositioned { pageBounds = it.boundsInRoot() }.testTag("template-page"), state = pageScroll, contentPadding = PaddingValues(bottom = 32.dp)) {
             item {
-                Box(Modifier.fillMaxWidth().height(if (page.cover.isBlank()) 98.dp else 156.dp)) {
-                    PageCover(page.cover, Modifier.fillMaxWidth().height(if (page.cover.isBlank()) 74.dp else 132.dp))
-                    Box(Modifier.align(Alignment.BottomStart).padding(start = 24.dp).size(56.dp).background(pageWash(page.kind), RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) { Text(pageIcon(page.kind), color = accent(page.kind), fontSize = 30.sp, fontWeight = FontWeight.Bold) }
+                Box(Modifier.fillMaxWidth().height(if (page.cover.isBlank()) 64.dp else 156.dp)) {
+                    if (page.cover.isNotBlank()) PageCover(page.cover, Modifier.fillMaxWidth().height(132.dp))
+                    Box(Modifier.align(Alignment.BottomStart).padding(start = 24.dp).size(if (page.cover.isBlank()) 44.dp else 56.dp).background(pageWash(page.kind), RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) { Text(pageIcon(page.kind), color = accent(page.kind), fontSize = if (page.cover.isBlank()) 24.sp else 30.sp, fontWeight = FontWeight.Bold) }
                 }
                 Column(Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
                     Text(page.title, color = Ice, style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold))
@@ -265,7 +199,7 @@ internal fun TemplatePageScreen(page: TemplatePageEntity, actions: TemplateActio
                         Row(Modifier.horizontalScroll(rememberScrollState())) {
                             TextButton(onClick = { rename = true }) { Text("Rename") }
                             TextButton(onClick = { run { onCopy(actions.duplicate(page.id)) } }, enabled = !busy) { Text("Duplicate") }
-                            TextButton(onClick = { exportLauncher.launch(exportFileName(page.title)) }, enabled = !busy) { Text("Export Excel") }
+                            TextButton(onClick = { exportOptions = true }, enabled = !busy) { Text("Export Excel") }
                             TextButton(onClick = { currencyEditor = true }, enabled = !busy) { Text("Currency: $currencySymbol") }
                             TextButton(onClick = { run { actions.archive(page.id, !page.archived); onBack() } }, enabled = !busy) { Text(if (page.archived) "Restore" else "Archive") }
                         }
@@ -316,11 +250,14 @@ internal fun TemplatePageScreen(page: TemplatePageEntity, actions: TemplateActio
         }
     }
     }
-    if (deleting) ConfirmDelete("template", "This removes “${page.title}” and all its local records. It cannot be undone. The Notion original stays unchanged.", busy, { deleting = false }, { run { actions.delete(page.id); onBack() } })
-    deleteBlock?.let { block -> ConfirmDelete("section", "This permanently removes “${block.text}”${if (block.children.isNotEmpty()) " and its ${block.children.size} nested items" else ""}.", busy, { deleteBlock = null }, {
+    if (exportOptions) AlertDialog(onDismissRequest = { exportOptions = false }, title = { Text("Export Excel workbook") }, text = {
+        Column { Text("Summary totals use active records by default. The record sheets retain the archive flag."); Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(includeArchived, { includeArchived = it }); Text("Include archived records in totals") } }
+    }, confirmButton = { TextButton(onClick = { exportOptions = false; exportLauncher.launch(exportFileName(page.title)) }) { Text("Export") } }, dismissButton = { TextButton(onClick = { exportOptions = false }) { Text("Cancel") } })
+    if (deleting) ConfirmDelete("page", "Move “${page.title}” and its records to Trash? Restore them in Settings.", busy, { deleting = false }, { run { actions.delete(page.id); onBack() } }, recoverable = true)
+    deleteBlock?.let { block -> ConfirmDelete("section", "Move “${block.text}”${if (block.children.isNotEmpty()) " and its ${block.children.size} nested items" else ""} to Trash?", busy, { deleteBlock = null }, {
         change { it.removeBlock(block.id) }
         deleteBlock = null
-    }) }
+    }, recoverable = true) }
     tableId?.let { id -> RecordBrowser(doc, id, busy || pending > 0, { tableId = null }, openRow, { fieldTable = id },
         onDelete = { selected -> actions.deleteRows(page.id, id, selected) },
         onArchive = { selected, archived -> actions.change(page.id) { it.archiveRows(id, selected, archived) } },
@@ -381,7 +318,7 @@ internal fun TemplatePageScreen(page: TemplatePageEntity, actions: TemplateActio
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("\$", "₹", "€", "£", "¥").forEach { option -> FilterChip(symbol == option, { symbol = option }, label = { Text(option) }) }
             }
-            Button(onClick = { onCurrencySymbol(symbol.trim()); currencyEditor = false }, enabled = symbol.isNotBlank()) { Text("Save currency") }
+            Button(onClick = { onCurrencySymbol(symbol.trim()); currencyEditor = false }, enabled = symbol.isNotBlank() && symbol.none(Char::isISOControl)) { Text("Save currency") }
         }
     }
 }
@@ -748,7 +685,7 @@ private fun Modifier.tableRule() = drawBehind {
         if (table.rows.any { it.id == initial.id }) TextButton(onClick = { onSave(initial.copy(title = title, values = values, archived = !initial.archived)) }, enabled = !busy) { Text(if (initial.archived) "Restore entry" else "Archive entry") }
     }
     if (discard) AlertDialog(onDismissRequest = { discard = false }, title = { Text("Discard unsaved changes?") }, confirmButton = { TextButton(onClick = onDismiss) { Text("Discard") } }, dismissButton = { TextButton(onClick = { discard = false }) { Text("Keep editing") } })
-    if (deleting) ConfirmDelete("entry", "This permanently removes “${initial.displayTitle()}” and its saved values.", busy, { deleting = false }, { deleting = false; onDelete?.invoke() })
+    if (deleting) ConfirmDelete("entry", "Move “${initial.displayTitle()}” and its saved values to Trash?", busy, { deleting = false }, { deleting = false; onDelete?.invoke() }, recoverable = true)
 }
 
 @Composable private fun NativeFieldManager(table: PageTable, busy: Boolean, error: String?, onDismiss: () -> Unit, onSave: (List<PageField>) -> Unit) {
@@ -795,10 +732,12 @@ internal fun NewTemplateDialog(busy: Boolean, error: String?, onDismiss: () -> U
     var title by rememberSaveable { mutableStateOf("") }
     var description by rememberSaveable { mutableStateOf("") }
     var starter by rememberSaveable { mutableStateOf("blank") }
-    Editor("New template", busy, error, onDismiss, footer = {
-        Button(onClick = { onCreate(title, description, starter) }, enabled = !busy && title.isNotBlank(), modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)) { Text("Create template") }
+    var discard by remember { mutableStateOf(false) }
+    val dismiss = { if (title.isNotBlank() || description.isNotBlank()) discard = true else onDismiss() }
+    Editor("New page", busy, error, dismiss, footer = {
+        Button(onClick = { onCreate(title, description, starter) }, enabled = !busy && title.isNotBlank(), modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)) { Text(if (busy) "Creating…" else "Create page") }
     }) {
-        OutlinedTextField(title, { title = it }, label = { Text("Template name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(title, { title = it }, label = { Text("Page name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
         OutlinedTextField(description, { description = it }, label = { Text("Description (optional)") }, modifier = Modifier.fillMaxWidth(), minLines = 2)
         OutlinedButton(onClick = onImport, enabled = !busy, modifier = Modifier.fillMaxWidth().testTag("open-notion-import")) { Text("Import from Notion") }
         Text("Choose a starting point", style = MaterialTheme.typography.titleMedium)
@@ -809,15 +748,5 @@ internal fun NewTemplateDialog(busy: Boolean, error: String?, onDismiss: () -> U
             }
         }
     }
-}
-
-@Composable private fun TemplateRowMenu(title: String, edit: () -> Unit, delete: () -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    Box {
-        IconButton(onClick = { expanded = true }) { Icon(Icons.Rounded.MoreVert, "Actions for $title", tint = Muted) }
-        DropdownMenu(expanded, { expanded = false }) {
-            DropdownMenuItem(text = { Text("Edit template") }, onClick = { expanded = false; edit() })
-            DropdownMenuItem(text = { Text("Delete template") }, onClick = { expanded = false; delete() })
-        }
-    }
+    if (discard) AlertDialog(onDismissRequest = { discard = false }, title = { Text("Discard this draft?") }, confirmButton = { TextButton(onClick = onDismiss) { Text("Discard") } }, dismissButton = { TextButton(onClick = { discard = false }) { Text("Keep editing") } })
 }

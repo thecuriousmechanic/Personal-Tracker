@@ -74,10 +74,11 @@ class WorkspaceEditingTest {
         Assume.assumeTrue("templates.json" in context.assets.list("private-notion").orEmpty())
         val templates = TemplateRepository(db)
         templates.importBundled(context)
-        val page = templates.pages.first().first()
+        val before = templates.pages.first()
+        val page = before.first()
         templates.delete(page.id)
         templates.importBundled(context)
-        assertEquals(4, templates.pages.first().size)
+        assertEquals(before.map { it.id }.toSet() - page.id, templates.pages.first().map { it.id }.toSet())
         assertTrue(db.templatePageDao().page(page.id)!!.deleted)
         assertTrue(TemplateDocument.parse(db.templatePageDao().page(page.id)!!.data).tables.isEmpty())
     }

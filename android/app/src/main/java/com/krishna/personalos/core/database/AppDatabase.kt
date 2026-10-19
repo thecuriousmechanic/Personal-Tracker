@@ -36,9 +36,11 @@ class AppConverters {
         TrackerEntryEntity::class,
         TrackerCellEntity::class,
         TemplatePageEntity::class,
+        TrashEntity::class,
+        WorkspacePreferenceEntity::class,
     ],
-    version = 4,
-    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3), AutoMigration(from = 3, to = 4)],
+    version = 5,
+    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3), AutoMigration(from = 3, to = 4), AutoMigration(from = 4, to = 5)],
     exportSchema = true,
 )
 @TypeConverters(AppConverters::class)
@@ -46,6 +48,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun appDao(): AppDao
     abstract fun trackerDao(): TrackerDao
     abstract fun templatePageDao(): TemplatePageDao
+    abstract fun recoveryDao(): RecoveryDao
 
     companion object {
         @Volatile private var instance: AppDatabase? = null

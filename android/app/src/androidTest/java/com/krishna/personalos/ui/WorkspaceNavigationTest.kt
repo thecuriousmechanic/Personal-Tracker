@@ -61,19 +61,20 @@ class WorkspaceNavigationTest {
         compose.onNodeWithText("Keep it", substring = false).performClick()
         compose.onNode(hasSetTextAction() and hasText("QA weekly edit")).assertIsDisplayed()
         compose.onNodeWithText("Delete entry", substring = false).performClick()
-        compose.onNodeWithText("Delete permanently", substring = false).performClick()
+        compose.onNodeWithText("Move to Trash", substring = false).performClick()
         compose.waitUntil(10_000) { compose.onAllNodesWithTag("workspace-editor").fetchSemanticsNodes().isEmpty() }
     }
 
     @Test fun appearanceToggleSwitchesToDarkModeAndBack() {
         compose.waitUntil(15_000) { compose.onAllNodesWithText("Week Plan").fetchSemanticsNodes().isNotEmpty() }
-        if (compose.onAllNodesWithContentDescription("Use dark mode").fetchSemanticsNodes().isNotEmpty()) {
-            compose.onNodeWithContentDescription("Use dark mode").performClick()
-        }
-        compose.waitUntil(5_000) { compose.onAllNodesWithContentDescription("Use light mode").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNode(hasText("Settings", substring = false) and hasClickAction()).performClick()
+        compose.onNodeWithContentDescription("Dark appearance").assertIsOff().performClick()
+        compose.onNodeWithContentDescription("Dark appearance").assertIsOn()
+        compose.onNode(hasText("Home", substring = false) and hasClickAction()).performClick()
         screenshot("home-dark")
-        compose.onNodeWithContentDescription("Use light mode").performClick()
-        compose.waitUntil(5_000) { compose.onAllNodesWithContentDescription("Use dark mode").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNode(hasText("Settings", substring = false) and hasClickAction()).performClick()
+        compose.onNodeWithContentDescription("Dark appearance").performClick()
+        compose.onNodeWithContentDescription("Dark appearance").assertIsOff()
     }
 
     @Test fun noteChecklistCanBeCreatedAndToggledFromLibrary() {
@@ -93,12 +94,12 @@ class WorkspaceNavigationTest {
         screenshot("note-checklist")
         compose.onNodeWithText("QA checklist note", substring = false).performClick()
         compose.onNodeWithText("Delete note", substring = false).performClick()
-        compose.onNodeWithText("Delete permanently").performClick()
+        compose.onNodeWithText("Move to Trash").performClick()
     }
 
     @Test fun homeOpensEachImportedTemplateDirectly() {
         compose.waitUntil(15_000) { compose.onAllNodesWithText("Week Plan").fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithText("Your templates").assertIsDisplayed()
+        compose.onNodeWithText("Your workspace").assertIsDisplayed()
         compose.onNodeWithText("Apps", substring = false).assertDoesNotExist()
         compose.onNodeWithText("Habits", substring = false).assertDoesNotExist()
         screenshot("home-templates")
@@ -130,7 +131,7 @@ class WorkspaceNavigationTest {
                 screenshot("finance-updated")
             }
             compose.onNodeWithContentDescription("Back to templates").performClick()
-            compose.onNodeWithText("Your templates").assertIsDisplayed()
+            compose.onNodeWithText("Your workspace").assertIsDisplayed()
         }
         compose.onNode(hasText("Plan", substring = false) and hasClickAction()).performClick()
         compose.onNodeWithText("Make room for what matters").assertIsDisplayed()
@@ -164,7 +165,7 @@ class WorkspaceNavigationTest {
             compose.onNodeWithText("Keep it").performClick()
             compose.onNodeWithText("Title", substring = false).assertTextContains("Updated $kind")
             compose.onNodeWithText("Delete $kind", substring = false).performClick()
-            compose.onNodeWithText("Delete permanently").performClick()
+            compose.onNodeWithText("Move to Trash").performClick()
             compose.waitUntil(10_000) { compose.onAllNodesWithTag("workspace-editor").fetchSemanticsNodes().isEmpty() }
             compose.onNodeWithText("Updated $kind", substring = false).assertDoesNotExist()
         }
@@ -179,7 +180,7 @@ class WorkspaceNavigationTest {
         compose.onNodeWithContentDescription("Back to templates").performClick()
         compose.onNodeWithTag("template-home").performScrollToNode(hasContentDescription("Actions for Week Plan copy"))
         compose.onNodeWithContentDescription("Actions for Week Plan copy").performClick()
-        compose.onNodeWithText("Edit template").performClick()
+        compose.onNodeWithText("Edit page").performClick()
         compose.onNodeWithText("Rename", substring = false).performScrollTo().performClick()
         compose.onNodeWithText("Name", substring = false).performTextReplacement("QA renamed template")
         compose.onNodeWithText("Save template").performClick()
@@ -187,17 +188,18 @@ class WorkspaceNavigationTest {
         compose.onNodeWithContentDescription("Back to templates").performClick()
         compose.onNodeWithTag("template-home").performScrollToNode(hasContentDescription("Actions for QA renamed template"))
         compose.onNodeWithContentDescription("Actions for QA renamed template").performClick()
-        compose.onNodeWithText("Delete template").performClick()
-        compose.onNodeWithText("Delete permanently").performClick()
+        compose.onNodeWithText("Move to Trash").performClick()
+        compose.onNodeWithText("Move to Trash").performClick()
         compose.waitUntil(10_000) { compose.onAllNodesWithText("QA renamed template").fetchSemanticsNodes().isEmpty() }
         compose.onNodeWithText("Week Plan").assertExists()
     }
 
     @Test fun templateSectionsCanBeAddedEditedAndDeleted() {
-        compose.waitUntil(15_000) { compose.onAllNodesWithText("MY TRACKER", substring = false).fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithTag("template-home").performScrollToNode(hasText("Syllabus", substring = false))
-        compose.onNodeWithText("Syllabus", substring = false).performClick()
-        compose.onNodeWithText("Edit", substring = false).performClick()
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("new-template").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("new-template").performScrollTo().performClick()
+        compose.onNodeWithText("Page name").performTextInput("QA section workspace")
+        compose.onNodeWithText("Create page", substring = false).performClick()
+        compose.waitUntil(10_000) { compose.onAllNodesWithTag("template-page").fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() }
         compose.onNodeWithTag("template-page").performScrollToNode(hasText("Add section", substring = false))
         compose.onNodeWithText("Add section", substring = false).performClick()
         compose.onNodeWithText("Section content", substring = false).performTextInput("QA section")
@@ -209,16 +211,16 @@ class WorkspaceNavigationTest {
         compose.onNodeWithTag("template-page").performScrollToNode(hasText("QA section updated", substring = false))
         compose.onNodeWithContentDescription("Section actions for QA section updated").performClick()
         compose.onNodeWithText("Delete section", substring = false).performClick()
-        compose.onNodeWithText("Delete permanently", substring = false).performClick()
+        compose.onNodeWithText("Move to Trash", substring = false).performClick()
         compose.waitUntil(10_000) { compose.onAllNodesWithText("QA section updated", substring = false).fetchSemanticsNodes().isEmpty() }
     }
 
     @Test fun starterBoardShowsUndatedEntriesAndCalendarCanCreateRecords() {
         compose.waitUntil(15_000) { compose.onAllNodesWithTag("new-template").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithTag("new-template").performScrollTo().performClick()
-        compose.onNodeWithText("Template name").performTextInput("QA enhanced workspace")
+        compose.onNodeWithText("Page name").performTextInput("QA enhanced workspace")
         compose.onNodeWithText("Project board", substring = false).performScrollTo().performClick()
-        compose.onNodeWithText("Create template", substring = false).performClick()
+        compose.onNodeWithText("Create page", substring = false).performClick()
         compose.waitUntil(10_000) { compose.onAllNodesWithText("QA enhanced workspace", substring = false).fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithTag("template-page").performScrollToNode(hasText("+ Add entry", substring = false))
         compose.onNodeWithText("+ Add entry", substring = false).performClick()
@@ -231,6 +233,7 @@ class WorkspaceNavigationTest {
         screenshot("enhanced-board")
         compose.onNodeWithTag("template-page").performScrollToNode(hasTestTag("add-database"))
         compose.onNodeWithTag("add-database").performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Database name", substring = false).fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() }
         compose.onNodeWithText("Database name").performTextInput("Dates")
         compose.onNodeWithText("Calendar", substring = false).performClick()
         compose.onNodeWithText("Create database", substring = false).performScrollTo().performClick()
@@ -243,22 +246,22 @@ class WorkspaceNavigationTest {
         compose.onNodeWithText("Calendar appointment", substring = false).assertIsDisplayed()
         screenshot("enhanced-calendar")
         compose.onNodeWithContentDescription("Template actions").performClick()
-        compose.onNodeWithText("Delete template", substring = false).performClick()
-        compose.onNodeWithText("Delete permanently", substring = false).performClick()
+        compose.onNodeWithText("Move to Trash", substring = false).performClick()
+        compose.onNodeWithText("Move to Trash", substring = false).performClick()
         compose.waitUntil(10_000) { compose.onAllNodesWithTag("template-home").fetchSemanticsNodes().isNotEmpty() }
     }
 
     @Test fun homeQuickCreateOpensTheEditorAndShowsTheSavedNote() {
         compose.waitUntil(15_000) { compose.onAllNodesWithTag("new-template").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithContentDescription("Add", substring = false).performClick()
-        compose.onNodeWithText("Create something", substring = false).assertIsDisplayed()
+        compose.onNodeWithText("Add to your workspace", substring = false).assertIsDisplayed()
         compose.onNodeWithText("New note", substring = false).performClick()
         compose.onNodeWithText("Title", substring = false).performTextInput("QA quick note")
         compose.onNodeWithText("Save note", substring = false).performClick()
         compose.waitUntil(10_000) { compose.onAllNodesWithText("QA quick note", substring = false).fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("QA quick note", substring = false).performClick()
         compose.onNodeWithText("Delete note", substring = false).performClick()
-        compose.onNodeWithText("Delete permanently", substring = false).performClick()
+        compose.onNodeWithText("Move to Trash", substring = false).performClick()
     }
 
     private fun screenshot(name: String) {

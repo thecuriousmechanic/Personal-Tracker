@@ -24,9 +24,13 @@ enum class CaptureKind(val label: String) { TASK("Task"), NOTE("Note"), PROJECT(
 
 class PersonalOSRepository(private val database: AppDatabase) {
     private val dao = database.appDao()
+    private val recovery = RecoveryRepository(database)
 
     suspend fun saveTask(item: TaskEntity) = database.withTransaction {
         require(item.title.isNotBlank()) { "Add a title" }
+        require(item.repeatDays in listOf(0, 1, 7)) { "Choose daily or weekly repeat" }
+        require(item.reminderMinutes == null || item.reminderMinutes in 0..1439) { "Use a valid reminder time" }
+        require(item.reminderMinutes == null || item.dueEpochDay != null) { "A reminder needs a due date" }
         require(item.projectId == null || dao.project(item.projectId) != null) { "Choose an existing project" }
         val previous = dao.task(item.id)
         val value = item.copy(title = item.title.trim(), completedAt = if (item.status == TaskStatus.DONE) item.completedAt ?: System.currentTimeMillis() else null)
@@ -34,6 +38,7 @@ class PersonalOSRepository(private val database: AppDatabase) {
             require(previous.deletedAt == null) { "This task was deleted" }
             dao.updateTask(value)
         }
+        if (value.status == TaskStatus.DONE && previous?.status != TaskStatus.DONE) createNext(value, LocalDate.now())
     }
     suspend fun saveNote(item: NoteEntity) {
         require(item.title.isNotBlank()) { "Add a title" }
@@ -49,6 +54,12 @@ class PersonalOSRepository(private val database: AppDatabase) {
         dao.insertGoal(item.copy(title = item.title.trim(), horizon = item.horizon.trim()))
     }
     suspend fun delete(kind: CaptureKind, id: String) = database.withTransaction {
+        val table = when (kind) { CaptureKind.TASK -> "tasks"; CaptureKind.NOTE -> "notes"; CaptureKind.PROJECT -> "projects"; CaptureKind.GOAL -> "goals"; else -> error("Unsupported item") }
+        val title = when (kind) { CaptureKind.TASK -> dao.task(id)?.title; CaptureKind.NOTE -> dao.note(id)?.title; CaptureKind.PROJECT -> dao.project(id)?.title; CaptureKind.GOAL -> dao.goal(id)?.title; CaptureKind.HABIT -> null }
+        requireNotNull(title) { "Item no longer exists" }
+        val queries = linkedMapOf<String, Pair<String, Array<out Any?>>>(table to ("id = ?" to arrayOf(id)), "entity_relations" to ("sourceId = ? OR targetId = ?" to arrayOf(id, id)), "activity_events" to ("entityId = ?" to arrayOf(id)))
+        if (kind == CaptureKind.PROJECT) queries["tasks"] = "projectId = ?" to arrayOf(id)
+        recovery.capture(kind.name.lowercase(), title, id, queries)
         when (kind) {
             CaptureKind.TASK -> dao.deleteTask(id, System.currentTimeMillis())
             CaptureKind.NOTE -> dao.deleteNote(id)
@@ -92,8 +103,8 @@ class PersonalOSRepository(private val database: AppDatabase) {
         dao.removeBundledProjects()
     }
 
-    suspend fun toggleTask(id: String, today: LocalDate = LocalDate.now()) {
-        val task = dao.task(id) ?: return
+    suspend fun toggleTask(id: String, today: LocalDate = LocalDate.now()) = database.withTransaction {
+        val task = dao.task(id)?.takeIf { it.deletedAt == null } ?: return@withTransaction
         val now = System.currentTimeMillis()
         val completing = task.status != TaskStatus.DONE
         dao.updateTask(
@@ -112,6 +123,22 @@ class PersonalOSRepository(private val database: AppDatabase) {
                 now,
             ),
         )
+        if (completing) createNext(task, today)
+    }
+
+    private suspend fun createNext(task: TaskEntity, today: LocalDate) {
+        if (task.repeatDays == 0 || task.repeatPaused) return
+        val nextId = UUID.nameUUIDFromBytes("repeat:${task.id}".toByteArray()).toString()
+        if (dao.task(nextId) != null) return
+        val nextDay = LocalDate.ofEpochDay(maxOf(task.dueEpochDay ?: today.toEpochDay(), today.toEpochDay())).plusDays(task.repeatDays.toLong()).toEpochDay()
+        dao.insertTask(task.copy(id = nextId, status = TaskStatus.UPCOMING, dueEpochDay = nextDay, createdAt = System.currentTimeMillis(), completedAt = null, deletedAt = null))
+    }
+
+    suspend fun skipTask(id: String) = database.withTransaction {
+        val task = requireNotNull(dao.task(id))
+        require(task.deletedAt == null && task.status != TaskStatus.DONE && task.repeatDays > 0 && !task.repeatPaused) { "Only active recurring tasks can be skipped" }
+        createNext(task, LocalDate.now())
+        delete(CaptureKind.TASK, id)
     }
 
     suspend fun scheduleToday(id: String, today: LocalDate = LocalDate.now()) {

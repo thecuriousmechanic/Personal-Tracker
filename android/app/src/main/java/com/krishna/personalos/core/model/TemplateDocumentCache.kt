@@ -11,4 +11,5 @@ object TemplateDocumentCache {
     fun put(id: String, json: String, document: TemplateDocument) { cache.put(id, Cached(json, document)) }
     fun getOrParse(id: String, json: String): TemplateDocument = peek(id, json) ?: TemplateDocument.parse(json).also { document -> document.tables.forEach { it.activeByDate }; cache.put(id, Cached(json, document)) }
     fun remove(id: String) { cache.remove(id) }
+    fun clear() { cache.evictAll() }
 }

@@ -20,7 +20,7 @@ data class WorkspaceSnapshot(
     val activity: List<ActivityEventEntity> = emptyList(),
 ) {
     fun todayTasks(today: Long): List<TaskEntity> = tasks.filter {
-        it.status == TaskStatus.TODAY || (it.dueEpochDay == today && it.status in setOf(TaskStatus.UPCOMING, TaskStatus.DONE))
+        (it.status == TaskStatus.TODAY && (it.dueEpochDay == null || it.dueEpochDay <= today)) || (it.dueEpochDay == today && it.status in setOf(TaskStatus.UPCOMING, TaskStatus.DONE))
     }
 
     fun todayProgress(today: Long): Int {

@@ -9,6 +9,10 @@ An Android-first personal workspace, with a companion Next.js web prototype in t
 - Circular progress indicators, editable currency and downloadable Excel summaries.
 - Local Notion export import: **Home → New template → Import from Notion**.
 - Local Room storage, no account or runtime Notion credentials required.
+- Refreshed Home with today’s tasks, pinned pages, full-content search, and one **New page** flow.
+- Blank, daily routine, budget, project board, reading, and weekly review starters.
+- Daily/weekly tasks with pause, skip, and optional notifications.
+- Recoverable Trash, Undo for deletion, and full workspace backup/restore in **Settings**.
 
 Export a Notion page using **Export → Markdown & CSV**, then select the ZIP (or a standalone `.md` / `.csv`) in the app. Preview the import, choose whether to include database records, and confirm. Every import creates a separate template without replacing existing pages.
 
@@ -51,4 +55,8 @@ Legacy private-template device tests skip when their optional local fixtures are
 
 ## Data safety
 
-Android data stays in the app's local storage. Imported file contents are not uploaded. Deleting app data or uninstalling removes local records; exporting worksheets is not a full restorable backup. Web data stays in that browser profile. Review exports before sharing them.
+Android data stays in the app's local storage. Imported file contents are not uploaded. **Settings → Back up workspace** saves a versioned JSON backup of pages, records, tasks, notes, projects, goals, history, pins, appearance, available page covers, and Trash. **Restore a backup** validates and previews the file before replacing the local workspace in one transaction. Keep a current backup before uninstalling or clearing app data. Backups are limited to 32 MB and 100,000 records and must use the supported backup/database version. Excel worksheets remain reports rather than restorable backups.
+
+Deleted pages, sections, records, tasks, notes, projects, and goals stay in **Settings → Trash** until explicitly erased. Restore a parent page before restoring its individual records. Daily/weekly tasks create one next occurrence when completed or skipped; overdue repeats start from today. Pausing stops the next occurrence and its reminder. Android may delay notifications to save battery; notifications require permission on Android 13 and later. Excel summary totals exclude archived records by default, with an explicit option to include them.
+
+Web data stays in that browser profile. Review exports before sharing them. See [the refresh details](docs/WORKSPACE_REFRESH.md).

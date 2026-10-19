@@ -20,7 +20,10 @@ class TemplateRepository(private val database: AppDatabase) {
     }.flowOn(Dispatchers.Default)
 
     suspend fun delete(id: String) = database.withTransaction {
-        dao.page(id)?.let { dao.update(it.copy(deleted = true, data = "{\"blocks\":[],\"tables\":[]}")) }
+        dao.page(id)?.takeIf { !it.deleted }?.let {
+            RecoveryRepository(database).capture("page", it.title, id, mapOf("template_pages" to ("id = ?" to arrayOf(id))))
+            dao.update(it.copy(deleted = true, data = "{\"blocks\":[],\"tables\":[]}"))
+        }
         TemplateDocumentCache.remove(id)
     }
     /** Explicit, non-destructive re-import of the verified Notion finance template. */
@@ -131,6 +134,7 @@ class TemplateRepository(private val database: AppDatabase) {
                 }
             }
             val json = after.toJson()
+            RecoveryRepository(database).captureRemovedSections(page, before, after)
             dao.update(page.copy(data = json))
             TemplateDocumentCache.put(page.id, json, after)
         }
@@ -144,7 +148,8 @@ class TemplateRepository(private val database: AppDatabase) {
         val id = UUID.randomUUID().toString()
         val document = PageStarters.document(starter)
         val json = document.toJson()
-        dao.importPage(TemplatePageEntity(id, title.trim(), subtitle.trim(), "personal", "", "Local template", LocalDate.now().toString(), json))
+        val kind = when (starter) { "finance" -> "finance"; "routine" -> "week"; "reading" -> "study"; else -> "personal" }
+        dao.importPage(TemplatePageEntity(id, title.trim(), subtitle.trim(), kind, "", "Local page", LocalDate.now().toString(), json))
         TemplateDocumentCache.put(id, json, document)
         id
     }
@@ -198,10 +203,18 @@ class TemplateRepository(private val database: AppDatabase) {
 
 
     suspend fun deleteRow(pageId: String, tableId: String, rowId: String) {
-        change(pageId) { document -> document.removeRow(tableId, rowId) }
+        deleteRows(pageId, tableId, setOf(rowId))
     }
 
     suspend fun deleteRows(pageId: String, tableId: String, rowIds: Set<String>) {
-        change(pageId) { document -> document.removeRows(tableId, rowIds) }
+        database.withTransaction {
+            val page = requireNotNull(dao.page(pageId))
+            require(!page.deleted) { "Restore the page first" }
+            val doc = TemplateDocumentCache.getOrParse(page.id, page.data)
+            val rows = doc.table(tableId).rows.filter { it.id in rowIds }
+            require(rows.size == rowIds.size && rows.isNotEmpty()) { "Choose existing records" }
+            RecoveryRepository(database).captureRows(page, tableId, rows)
+            change(pageId) { document -> document.removeRows(tableId, rowIds) }
+        }
     }
 }

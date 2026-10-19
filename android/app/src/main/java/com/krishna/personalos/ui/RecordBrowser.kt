@@ -130,5 +130,5 @@ internal fun RecordBrowser(
             }
         }
     }
-    if (deleting) ConfirmDelete("${selection.size} selected records", "This permanently removes the selected records and their saved values. Archive them instead if you may need them later.", busy, { deleting = false }, { val ids = selection; run { onDelete(ids) } })
+    if (deleting) ConfirmDelete("${selection.size} selected records", "Move these records and their saved values to Trash? Restore them in Settings.", busy, { deleting = false }, { val ids = selection; run { onDelete(ids) } }, recoverable = true)
 }

@@ -10,4 +10,5 @@ data class WorkspaceActions(
     val saveGoal: suspend (GoalEntity) -> Unit,
     val delete: suspend (CaptureKind, String) -> Unit,
     val toggleNoteChecklist: suspend (String, Int) -> Unit,
+    val skipTask: suspend (String) -> Unit = { error("Skipping is unavailable") },
 )

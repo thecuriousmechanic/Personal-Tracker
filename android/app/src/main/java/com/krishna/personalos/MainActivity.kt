@@ -14,12 +14,15 @@ import com.krishna.personalos.ui.PersonalOSApp
 import com.krishna.personalos.ui.theme.PersonalOSTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
+import com.krishna.personalos.core.reminders.TaskReminders
 
 class MainActivity : ComponentActivity() {
     private val homeRequests = MutableStateFlow(0)
+    private val launchTask = MutableStateFlow<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        launchTask.value = intent.getStringExtra(TaskReminders.OPEN_TASK)
         setContent {
             val model: AppViewModel = viewModel()
             val darkMode = model.darkMode.collectAsStateWithLifecycle().value
@@ -34,6 +37,9 @@ class MainActivity : ComponentActivity() {
                 val importFailure = model.importFailure.collectAsStateWithLifecycle().value
                 val homeRequest = homeRequests.collectAsStateWithLifecycle().value
                 val trackerWorkspace = model.trackerWorkspace.collectAsStateWithLifecycle().value
+                val pinnedIds = model.pinnedIds.collectAsStateWithLifecycle().value
+                val trash = model.trash.collectAsStateWithLifecycle().value
+                val launchTaskId = launchTask.collectAsStateWithLifecycle().value
                 PersonalOSApp(
                     trackerWorkspace = trackerWorkspace,
                     trackerActions = model.trackerActions,
@@ -50,6 +56,10 @@ class MainActivity : ComponentActivity() {
                     currencySymbol = currencySymbol,
                     onCurrencySymbol = model::setCurrencySymbol,
                     homeRequest = homeRequest,
+                    launchTaskId = launchTaskId,
+                    pinnedIds = pinnedIds, onPin = model::pinPage,
+                    trash = trash, recovery = model.recovery, backup = model.backup,
+                    notices = model.notices, onRestoreBackup = model::restoreBackup,
                 )
             }
         }
@@ -58,6 +68,7 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        launchTask.value = intent.getStringExtra(TaskReminders.OPEN_TASK)
         homeRequests.update { it + 1 }
     }
 }

@@ -11,6 +11,10 @@ class TrackerRepository(private val database: AppDatabase) {
     val workspace = combine(dao.observeTrackers(), dao.observeFields(), dao.observeEntries(), dao.observeCells(), ::TrackerWorkspace)
     private fun id() = UUID.randomUUID().toString()
     suspend fun delete(id: String) = database.withTransaction {
+        val page = requireNotNull(dao.tracker(id)) { "Page no longer exists" }
+        RecoveryRepository(database).capture("tracker", page.title, id, mapOf(
+            "trackers" to ("id = ?" to arrayOf(id)), "tracker_fields" to ("trackerId = ?" to arrayOf(id)),
+            "tracker_entries" to ("trackerId = ?" to arrayOf(id)), "tracker_cells" to ("entryId IN (SELECT id FROM tracker_entries WHERE trackerId = ?)" to arrayOf(id))))
         dao.deleteCellsForTracker(id)
         dao.deleteEntriesForTracker(id)
         dao.deleteFieldsForTracker(id)
@@ -73,9 +77,7 @@ class TrackerRepository(private val database: AppDatabase) {
     }
 
     suspend fun deleteEntry(entryId: String) = database.withTransaction {
-        requireNotNull(dao.entry(entryId)) { "Entry no longer exists" }
-        dao.deleteCells(entryId)
-        dao.deleteEntry(entryId)
+        deleteEntries(setOf(entryId))
     }
 
     suspend fun deleteEntries(entryIds: Set<String>) = database.withTransaction {
@@ -83,6 +85,9 @@ class TrackerRepository(private val database: AppDatabase) {
         val entries = entryIds.map { requireNotNull(dao.entry(it)) { "One or more entries no longer exist" } }
         require(entries.map { it.trackerId }.distinct().size == 1) { "Selected entries must belong to one tracker" }
         val ids = entryIds.toList()
+        val placeholders = ids.joinToString(",") { "?" }
+        RecoveryRepository(database).capture("tracker_entries", if (entries.size == 1) entries.first().title else "${entries.size} entries", entries.first().trackerId, mapOf(
+            "tracker_entries" to ("id IN ($placeholders)" to ids.toTypedArray()), "tracker_cells" to ("entryId IN ($placeholders)" to ids.toTypedArray())))
         dao.deleteCells(ids)
         dao.deleteEntries(ids)
     }

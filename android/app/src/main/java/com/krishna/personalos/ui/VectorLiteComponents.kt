@@ -137,12 +137,12 @@ internal fun VectorOrb(modifier: Modifier = Modifier) {
 }
 
 @Composable
-internal fun LiteBottomNavigation(selected: LiteDestination, darkMode: Boolean, onToggleTheme: () -> Unit, onSelect: (LiteDestination) -> Unit) {
+internal fun LiteBottomNavigation(selected: LiteDestination, onSelect: (LiteDestination) -> Unit) {
     val haptics = LocalHapticFeedback.current
-    val destinations = listOf(LiteDestination.HOME, LiteDestination.PLAN, LiteDestination.LIBRARY)
+    val destinations = listOf(LiteDestination.HOME, LiteDestination.PLAN, LiteDestination.LIBRARY, LiteDestination.SETTINGS)
     Column(Modifier.fillMaxWidth().background(Paper).navigationBarsPadding()) {
         HorizontalDivider(color = Divider)
-        Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             Surface(
                 modifier = Modifier.weight(1f).height(64.dp),
                 color = Paper,
@@ -166,7 +166,7 @@ internal fun LiteBottomNavigation(selected: LiteDestination, darkMode: Boolean, 
                                     item.icon,
                                     contentDescription = null,
                                     tint = if (active) Cyan else Muted,
-                                    modifier = Modifier.background(if (active) SageWash else Color.Transparent, RoundedCornerShape(6.dp)).padding(horizontal = 15.dp, vertical = 5.dp).size(19.dp),
+                                    modifier = Modifier.background(if (active) SageWash else Color.Transparent, RoundedCornerShape(10.dp)).padding(horizontal = 12.dp, vertical = 5.dp).size(19.dp),
                                 )
                                 Spacer(Modifier.height(3.dp))
                                 Text(item.label, color = if (active) Cyan else Muted, style = MaterialTheme.typography.labelSmall)
@@ -174,17 +174,6 @@ internal fun LiteBottomNavigation(selected: LiteDestination, darkMode: Boolean, 
                         }
                     }
                 }
-            }
-            IconButton(
-                onClick = onToggleTheme,
-                modifier = Modifier.size(48.dp).semantics { },
-            ) {
-                Icon(
-                    if (darkMode) Icons.Rounded.LightMode else Icons.Rounded.DarkMode,
-                    contentDescription = if (darkMode) "Use light mode" else "Use dark mode",
-                    tint = Muted,
-                    modifier = Modifier.size(22.dp),
-                )
             }
             Spacer(Modifier.width(8.dp))
             Box(

@@ -42,7 +42,7 @@ class RecordBrowserTest {
         compose.onNodeWithText("First record").performTouchInput { longClick() }
         compose.onNodeWithTag("select-all-records").performClick()
         compose.onNodeWithTag("delete-selected-records").performClick()
-        compose.onNodeWithText("Delete permanently").performClick()
+        compose.onNodeWithText("Move to Trash").performClick()
         compose.onNodeWithText("Storage unavailable").assertIsDisplayed()
         compose.onNodeWithText("2 selected").assertIsDisplayed()
         compose.onNodeWithText("First record").assertExists()

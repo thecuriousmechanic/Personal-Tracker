@@ -40,6 +40,8 @@ data class PageStarter(val id: String, val title: String, val description: Strin
 object PageStarters {
     val all = listOf(
         PageStarter("blank", "Blank page", "Build your own sections and databases."),
+        PageStarter("routine", "Daily routine", "Check off daily habits and see your progress."),
+        PageStarter("finance", "Budget & spending", "Budgets, expenses, income, and monthly totals."),
         PageStarter("projects", "Project board", "Organize work by status with dates and checklists."),
         PageStarter("reading", "Reading list", "Keep sources, progress, and reading notes together."),
         PageStarter("review", "Weekly review", "Reflect on your week and plan the next one."),
@@ -49,6 +51,16 @@ object PageStarters {
         require(all.any { it.id == id }) { "Choose a template starter" }
         fun block(kind: String, text: String) = PageBlock(UUID.randomUUID().toString(), kind, text)
         if (id == "blank") return TemplateDocument(emptyList(), emptyList())
+        if (id == "routine") {
+            val fields = listOf(PageField("Date", "Date", "DATE"), PageField("Read", "Read", "CHECKBOX"), PageField("Move", "Move", "CHECKBOX"), PageField("Reflect", "Reflect", "CHECKBOX"), PageField("Notes", "Notes", "TEXT"), PageField("Progress", "Progress", "FORMULA"))
+            return TemplateDocument(listOf(PageBlock(UUID.randomUUID().toString(), "DAILY", "Daily check-in", "daily"), PageBlock(UUID.randomUUID().toString(), "CALENDAR", "Your month", "daily")), listOf(PageTable("daily", "Daily routine", fields, emptyList())))
+        }
+        if (id == "finance") {
+            val budget = PageTable("budget", "Budgets", listOf(PageField("Monthly Budget", "Monthly budget", "NUMBER"), PageField("This Month", "Spent this month", "FORMULA"), PageField("Utilization", "Budget used", "FORMULA"), PageField("expenses", "Expenses", "RELATION", relation = "expenses")), emptyList())
+            val expenses = PageTable("expenses", "Expenses", listOf(PageField("Date", "Date", "DATE"), PageField("Amount", "Amount", "NUMBER"), PageField("Budget", "Budget category", "RELATION", relation = "budget"), PageField("Notes", "Notes", "TEXT")), emptyList())
+            val incomes = PageTable("incomes", "Income", listOf(PageField("Date", "Date", "DATE"), PageField("Amount", "Amount", "NUMBER"), PageField("Type", "Type", "CHOICE", listOf("Salary", "Freelance", "Other")), PageField("Notes", "Notes", "TEXT")), emptyList())
+            return TemplateDocument(listOf(block("SUMMARY", "This month"), block("QUICK_ADD", "Log a transaction"), PageBlock(UUID.randomUUID().toString(), "TABLE", "Budgets", "budget", "budget"), PageBlock(UUID.randomUUID().toString(), "TABLE", "Expenses", "expenses", "list"), PageBlock(UUID.randomUUID().toString(), "TABLE", "Income", "incomes", "list")), listOf(budget, expenses, incomes))
+        }
         if (id == "review") return TemplateDocument(listOf(
             block("HEADING", "This week's focus"), block("TEXT", ""),
             block("HEADING", "Reflection"), block("TEXT", ""),
